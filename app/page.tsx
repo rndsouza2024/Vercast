@@ -172,8 +172,8 @@ export default function Home() {
   return (
     <main className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Abyss Uploader</h1>
-        <Dialog>
+        <h1 className="text-3xl font-bold">Vercast Player</h1>
+        {/* <Dialog>
           <DialogTrigger asChild>
             <Button>
               <Upload className="mr-2 h-4 w-4" />
@@ -184,7 +184,7 @@ export default function Home() {
             <DialogTitle>Upload Video</DialogTitle>
             <UploadForm onUploadSuccess={handleUploadSuccess} />
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
       </div>
       <VideoGrid videos={videos} />
     </main>
