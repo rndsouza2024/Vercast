@@ -9,14 +9,14 @@ const filePath = "info.json";
 const token = process.env.GITHUB_TOKEN;
 
 // Fetch existing metadata from GitHub JSON
-async function fetchMetadata(): Promise<Record<string, any>> {
+async function fetchMetadata() {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!response.ok) return {}; // Return empty object if file doesn't exist
+  if (!response.ok) return {}; // Return empty if file doesn't exist
 
   const fileData = await response.json();
   const content = Buffer.from(fileData.content, "base64").toString(); // Decode base64
@@ -24,14 +24,14 @@ async function fetchMetadata(): Promise<Record<string, any>> {
 }
 
 // Update GitHub JSON with new metadata
-async function updateMetadata(fileName: string, newData: any) {
+async function updateMetadata(newData: any) {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
   // Fetch existing data
   const existingData = await fetchMetadata();
 
-  // Add new structured data (key = filename)
-  const updatedData = { ...existingData, [fileName]: newData };
+  // Merge new data
+  const updatedData = { ...existingData, ...newData };
   const updatedContent = Buffer.from(JSON.stringify(updatedData, null, 2)).toString("base64");
 
   // Get file SHA (needed for GitHub updates)
@@ -49,7 +49,7 @@ async function updateMetadata(fileName: string, newData: any) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: "Update video metadata",
+      message: "Update metadata",
       content: updatedContent,
       sha: sha,
     }),
@@ -59,8 +59,8 @@ async function updateMetadata(fileName: string, newData: any) {
 }
 
 // Upload a file to GitHub (for storing thumbnails)
-async function uploadToGitHub(fileName: string, fileBuffer: Buffer) {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/thumbnails/${fileName}.jpg`;
+async function uploadToGitHub(fileName: string, fileBuffer: Buffer, mimeType: string) {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/thumbnails/${fileName}`;
 
   // Convert file to Base64
   const base64Content = fileBuffer.toString("base64");
@@ -83,17 +83,17 @@ async function uploadToGitHub(fileName: string, fileBuffer: Buffer) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: `Upload ${fileName}.jpg`,
+      message: `Upload ${fileName}`,
       content: base64Content,
       sha: sha || undefined,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`❌ Failed to upload ${fileName}.jpg to GitHub`);
+    throw new Error(`❌ Failed to upload ${fileName} to GitHub`);
   }
 
-  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/thumbnails/${fileName}.jpg`;
+  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/thumbnails/${fileName}`;
 }
 
 // **Upload API**
@@ -105,9 +105,8 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const videoUrl = formData.get("videoUrl") as string; // URL where the video is stored
+    const title = formData.get("title");
+    const description = formData.get("description");
     const thumbnail = formData.get("thumbnail") as File;
 
     if (!(file instanceof Blob)) {
@@ -116,25 +115,29 @@ export async function POST(req: Request) {
 
     console.log(`✅ Received file: ${file.name}`);
 
-    const fileName = file.name; // Use filename as JSON key
+    // **Step 1: Store video URL (assuming already uploaded somewhere)**
+    const videoUrl = `http://localhost:3000/${file.name}`;
 
-    // **Step 1: Upload thumbnail to GitHub (if provided)**
+    // **Step 2: Upload thumbnail to GitHub (if provided)**
     let thumbnailUrl = "";
     if (thumbnail) {
       const arrayBuffer = await thumbnail.arrayBuffer();
       const thumbnailBuffer = Buffer.from(arrayBuffer);
-      thumbnailUrl = await uploadToGitHub(fileName, thumbnailBuffer);
+      const fileName = `${file.name}.jpg`; // Store as JPEG in GitHub
+      thumbnailUrl = await uploadToGitHub(fileName, thumbnailBuffer, thumbnail.type);
     }
 
-    // **Step 2: Store video metadata in GitHub JSON**
+    // **Step 3: Store video metadata in GitHub JSON**
     const newMetadata = {
-      title,
-      description,
-      thumbnailUrl,
-      videoUrl,
+      [file.name]: {
+        title,
+        description,
+        thumbnailUrl,
+        videoUrl,
+      },
     };
 
-    const success = await updateMetadata(fileName, newMetadata);
+    const success = await updateMetadata(newMetadata);
     if (!success) {
       return NextResponse.json({ success: false, message: "Failed to update GitHub" });
     }
@@ -142,6 +145,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Upload successful",
+      videoUrl,
       metadata: newMetadata,
     });
   } catch (error) {
