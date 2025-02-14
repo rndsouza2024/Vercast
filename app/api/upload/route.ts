@@ -586,15 +586,15 @@ async function authenticateAbyss() {
 }
 
 // ✅ Safe JSON Parsing
-async function safeJsonParse(response: Response) {
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    console.error("❌ Unexpected non-JSON response:", text.slice(0, 200));
-    throw new Error(`❌ Response is not valid JSON: ${text.slice(0, 100)}`);
-  }
-}
+// async function safeJsonParse(response: Response) {
+//   const text = await response.text();
+//   try {
+//     return JSON.parse(text);
+//   } catch {
+//     console.error("❌ Unexpected non-JSON response:", text.slice(0, 200));
+//     throw new Error(`❌ Response is not valid JSON: ${text.slice(0, 100)}`);
+//   }
+// }
 
 // ✅ File Upload API Route
 export async function POST(req: Request) {
