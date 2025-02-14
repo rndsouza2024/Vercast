@@ -562,15 +562,9 @@
 //   }
 // }
 
-
 "use server";
 
 import { NextResponse } from "next/server";
-
-const repoOwner = "rndsouza2024";
-const repoName = "info";
-const filePath = "info.json";
-const token = process.env.GITHUB_TOKEN;
 
 // ✅ Authenticate with Abyss
 async function authenticateAbyss() {
@@ -591,7 +585,7 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// ✅ Safe JSON Parsing with Logging
+// ✅ Safe JSON Parsing
 async function safeJsonParse(response: Response) {
   const text = await response.text();
   try {
@@ -602,7 +596,7 @@ async function safeJsonParse(response: Response) {
   }
 }
 
-// ✅ Upload API Route
+// ✅ File Upload API Route
 export async function POST(req: Request) {
   try {
     if (req.method !== "POST") {
@@ -625,7 +619,7 @@ export async function POST(req: Request) {
     const hydraxForm = new FormData();
     hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
 
-    // ✅ Upload file to Hydrax (with Authentication)
+    // ✅ Upload file to Hydrax (with Abyss Authentication)
     const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
       method: "POST",
       headers: { Cookie: authCookie },
