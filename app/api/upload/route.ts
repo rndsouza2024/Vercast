@@ -2,80 +2,182 @@
 
 
 
-"use client";
+"use server";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { NextResponse } from "next/server";
 
-export function VideoGrid() {
-  const [videoList, setVideoList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const repoOwner = "rndsouza2024";
+const repoName = "info";
+const filePath = "info.json";
+const token = process.env.GITHUB_TOKEN;
 
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        setLoading(true);
+// Abyss authentication function
+async function authenticateAbyss() {
+  const response = await fetch("https://abyss.to/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "dsouzarnd@gmail.com",
+      password: "Navinjoyjeff131977",
+    }),
+  });
 
-        // ✅ Fetch video metadata from /api/list
-        const listResponse = await fetch("/api/list", { method: "GET" });
-        if (!listResponse.ok) throw new Error(`Failed to fetch /api/list: ${listResponse.statusText}`);
-        const listData = await listResponse.json();
+  if (!response.ok) {
+    throw new Error("❌ Authentication with Abyss failed");
+  }
 
-        if (!listData.items || !Array.isArray(listData.items)) {
-          throw new Error("Invalid response format from /api/list");
-        }
+  const authCookie = response.headers.get("set-cookie");
+  if (!authCookie) {
+    throw new Error("❌ No authentication cookie received");
+  }
 
-        // ✅ Process video list
-        const processedVideos = listData.items.map((video) => ({
-          ...video,
-          title: video.name,
-          description: "No description available", // Placeholder since GitHub is removed
-          thumbnailUrl: `/thumbnails/${video.slug}.jpg`, // Assume thumbnail exists
-        }));
+  console.log("✅ Abyss authentication successful");
+  return authCookie;
+}
 
-        setVideoList(processedVideos);
-      } catch (err) {
-        console.error("Error fetching videos:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+// Fetch existing thumbnail data from GitHub JSON file
+async function fetchThumbnails() {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) return {}; // Return empty if file doesn't exist
+
+  const fileData = await response.json();
+  const content = atob(fileData.content); // Decode base64 content
+  return JSON.parse(content); // Convert JSON string to object
+}
+
+// Update GitHub JSON file with new thumbnails
+async function updateThumbnails(newThumbnailData) {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+  // Fetch existing data
+  const existingData = await fetchThumbnails();
+
+  // Merge new data
+  const updatedData = { ...existingData, ...newThumbnailData };
+  const updatedContent = btoa(JSON.stringify(updatedData, null, 2)); // Convert to base64
+
+  // Get file SHA (needed for GitHub updates)
+  const getFileResponse = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const fileData = await getFileResponse.json();
+  const sha = fileData.sha;
+
+  // Push updated JSON to GitHub
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: "Update thumbnails",
+      content: updatedContent,
+      sha: sha,
+    }),
+  });
+
+  return response.ok;
+}
+
+// Handle Upload API
+export async function POST(req: Request) {
+  try {
+    if (req.method !== "POST") {
+      return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
     }
 
-    fetchVideos();
-  }, []);
+    // **Step 1: Authenticate with Abyss**
+    const authCookie = await authenticateAbyss();
 
-  if (loading) return <p className="text-center text-gray-500">Loading videos...</p>;
-  if (error) return <p className="text-center text-red-500">Error: {error}</p>;
-  if (!videoList.length) return <p className="text-center text-gray-500">No videos uploaded yet.</p>;
+    // **Step 2: Extract file and metadata from request**
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+    const title = formData.get("title");
+    const description = formData.get("description");
+    const thumbnail = formData.get("thumbnail");
 
-  return (
-    <div className="container mx-auto py-8">
-      <h2 className="text-2xl font-bold mb-4">Uploaded Videos</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {videoList.map((video, index) => (
-          <Link key={index} href={`/watch/${video.slug}`} className="group">
-            <div className="cursor-pointer p-2 border rounded-lg shadow-md hover:shadow-lg transition">
-              <div className="aspect-video relative overflow-hidden rounded-lg">
-                {/* ✅ Fixed: Image thumbnail now displays correctly */}
-                <Image
-                  src={video.thumbnailUrl}
-                  alt={video.title}
-                  width={640}
-                  height={360}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                />
-              </div>
-              <h3 className="mt-2 text-lg font-semibold">{video.title}</h3>
-              <p className="text-sm text-gray-400">Status: {video.status}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+    if (!(file instanceof Blob)) {
+      return NextResponse.json({ error: "Invalid or missing file" }, { status: 400 });
+    }
+
+    // Convert file to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    console.log(`✅ Received file: ${file.name} (${buffer.length} bytes)`);
+
+    // **Step 3: Upload file to Hydrax**
+    const hydraxForm = new FormData();
+    hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
+
+    const uploadResponse = await fetch(
+      "http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a",
+      {
+        method: "POST",
+        headers: { Cookie: authCookie },
+        body: hydraxForm,
+      }
+    );
+
+    if (!uploadResponse.ok) {
+      throw new Error(`❌ Upload failed: ${uploadResponse.statusText}`);
+    }
+
+    const data = await uploadResponse.json();
+    const videoUrl = `https://short.icu/${data.slug}`;
+
+    console.log("✅ File uploaded successfully:", data);
+
+    // **Step 4: Process thumbnail (if provided)**
+    let thumbnailUrl = "";
+    if (thumbnail) {
+      const arrayBuffer = await thumbnail.arrayBuffer();
+      const base64Image = Buffer.from(arrayBuffer).toString("base64");
+      thumbnailUrl = `data:${thumbnail.type};base64,${base64Image}`;
+    }
+
+    // **Step 5: Store video metadata in GitHub JSON**
+    const newThumbnailData = {
+      [file.name]: {
+        title,
+        description,
+        thumbnailUrl,
+        videoUrl,
+      },
+    };
+
+    const success = await updateThumbnails(newThumbnailData);
+    if (!success) {
+      return NextResponse.json({ success: false, message: "Failed to update GitHub" });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Upload successful",
+      videoUrl,
+      metadata: newThumbnailData,
+    });
+  } catch (error) {
+    console.error("❌ Upload error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// Handle Retrieval of Uploaded Data
+export async function GET() {
+  try {
+    const thumbnails = await fetchThumbnails();
+    return NextResponse.json({ success: true, data: thumbnails });
+  } catch (error) {
+    console.error("❌ Fetch error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }
 
 
