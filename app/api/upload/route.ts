@@ -563,7 +563,6 @@
 // }
 
 
-
 "use server";
 
 import { NextResponse } from "next/server";
@@ -609,6 +608,12 @@ export async function POST(req: Request) {
     // Convert file to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // ✅ Check file size before uploading
+    const MAX_FILE_SIZE_MB = 50; // Adjust based on Abyss limits
+    if (buffer.length > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      throw new Error(`❌ File too large. Max allowed: ${MAX_FILE_SIZE_MB}MB`);
+    }
 
     // ✅ Prepare FormData for Abyss
     const abyssForm = new FormData();
