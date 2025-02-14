@@ -1,7 +1,5 @@
 
 
-
-
 "use server";
 
 import { NextResponse } from "next/server";
@@ -35,8 +33,8 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// Fetch existing thumbnail data from GitHub JSON file
-async function fetchThumbnails() {
+// Fetch existing metadata from GitHub JSON
+async function fetchMetadata() {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
   const response = await fetch(url, {
@@ -46,20 +44,20 @@ async function fetchThumbnails() {
   if (!response.ok) return {}; // Return empty if file doesn't exist
 
   const fileData = await response.json();
-  const content = atob(fileData.content); // Decode base64 content
+  const content = Buffer.from(fileData.content, "base64").toString(); // Decode base64
   return JSON.parse(content); // Convert JSON string to object
 }
 
-// Update GitHub JSON file with new thumbnails
-async function updateThumbnails(newThumbnailData) {
+// Update GitHub JSON with new metadata
+async function updateMetadata(newData: any) {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
   // Fetch existing data
-  const existingData = await fetchThumbnails();
+  const existingData = await fetchMetadata();
 
   // Merge new data
-  const updatedData = { ...existingData, ...newThumbnailData };
-  const updatedContent = btoa(JSON.stringify(updatedData, null, 2)); // Convert to base64
+  const updatedData = { ...existingData, ...newData };
+  const updatedContent = Buffer.from(JSON.stringify(updatedData, null, 2)).toString("base64");
 
   // Get file SHA (needed for GitHub updates)
   const getFileResponse = await fetch(url, {
@@ -76,7 +74,7 @@ async function updateThumbnails(newThumbnailData) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: "Update thumbnails",
+      message: "Update metadata",
       content: updatedContent,
       sha: sha,
     }),
@@ -85,7 +83,45 @@ async function updateThumbnails(newThumbnailData) {
   return response.ok;
 }
 
-// Handle Upload API
+// Upload a file to GitHub (for storing thumbnails)
+async function uploadToGitHub(fileName: string, fileBuffer: Buffer, mimeType: string) {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/thumbnails/${fileName}`;
+
+  // Convert file to Base64
+  const base64Content = fileBuffer.toString("base64");
+
+  // Get SHA if file exists
+  let sha = "";
+  const getFileResponse = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (getFileResponse.ok) {
+    const fileData = await getFileResponse.json();
+    sha = fileData.sha;
+  }
+
+  // Upload file
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: `Upload ${fileName}`,
+      content: base64Content,
+      sha: sha || undefined,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`❌ Failed to upload ${fileName} to GitHub`);
+  }
+
+  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/thumbnails/${fileName}`;
+}
+
+// **Upload API**
 export async function POST(req: Request) {
   try {
     if (req.method !== "POST") {
@@ -100,7 +136,7 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File;
     const title = formData.get("title");
     const description = formData.get("description");
-    const thumbnail = formData.get("thumbnail");
+    const thumbnail = formData.get("thumbnail") as File;
 
     if (!(file instanceof Blob)) {
       return NextResponse.json({ error: "Invalid or missing file" }, { status: 400 });
@@ -134,16 +170,17 @@ export async function POST(req: Request) {
 
     console.log("✅ File uploaded successfully:", data);
 
-    // **Step 4: Process thumbnail (if provided)**
+    // **Step 4: Upload thumbnail to GitHub (if provided)**
     let thumbnailUrl = "";
     if (thumbnail) {
       const arrayBuffer = await thumbnail.arrayBuffer();
-      const base64Image = Buffer.from(arrayBuffer).toString("base64");
-      thumbnailUrl = `data:${thumbnail.type};base64,${base64Image}`;
+      const thumbnailBuffer = Buffer.from(arrayBuffer);
+      const fileName = `${file.name}.jpg`; // Store as JPEG in GitHub
+      thumbnailUrl = await uploadToGitHub(fileName, thumbnailBuffer, thumbnail.type);
     }
 
     // **Step 5: Store video metadata in GitHub JSON**
-    const newThumbnailData = {
+    const newMetadata = {
       [file.name]: {
         title,
         description,
@@ -152,7 +189,7 @@ export async function POST(req: Request) {
       },
     };
 
-    const success = await updateThumbnails(newThumbnailData);
+    const success = await updateMetadata(newMetadata);
     if (!success) {
       return NextResponse.json({ success: false, message: "Failed to update GitHub" });
     }
@@ -161,7 +198,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Upload successful",
       videoUrl,
-      metadata: newThumbnailData,
+      metadata: newMetadata,
     });
   } catch (error) {
     console.error("❌ Upload error:", error);
@@ -169,17 +206,16 @@ export async function POST(req: Request) {
   }
 }
 
-// Handle Retrieval of Uploaded Data
+// **Fetch Uploaded Data API**
 export async function GET() {
   try {
-    const thumbnails = await fetchThumbnails();
-    return NextResponse.json({ success: true, data: thumbnails });
+    const metadata = await fetchMetadata();
+    return NextResponse.json({ success: true, data: metadata });
   } catch (error) {
     console.error("❌ Fetch error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-
 
 // "use server";
 
