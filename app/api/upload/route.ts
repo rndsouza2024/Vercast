@@ -562,6 +562,9 @@
 //   }
 // }
 
+
+
+
 "use server";
 
 import { NextResponse } from "next/server";
@@ -585,18 +588,7 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// ✅ Safe JSON Parsing
-// async function safeJsonParse(response: Response) {
-//   const text = await response.text();
-//   try {
-//     return JSON.parse(text);
-//   } catch {
-//     console.error("❌ Unexpected non-JSON response:", text.slice(0, 200));
-//     throw new Error(`❌ Response is not valid JSON: ${text.slice(0, 100)}`);
-//   }
-// }
-
-// ✅ File Upload API Route
+// ✅ Upload File to Abyss
 export async function POST(req: Request) {
   try {
     if (req.method !== "POST") {
@@ -615,28 +607,26 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // ✅ Prepare FormData for Hydrax
-    const hydraxForm = new FormData();
-    hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
+    // ✅ Prepare FormData for Abyss
+    const abyssForm = new FormData();
+    abyssForm.append("file", new Blob([buffer], { type: file.type }), file.name);
 
-    // ✅ Upload file to Hydrax (with Abyss Authentication)
-    const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
+    // ✅ Upload file to Abyss
+    const uploadResponse = await fetch("https://abyss.to/upload", {
       method: "POST",
       headers: { Cookie: authCookie },
-      body: hydraxForm,
+      body: abyssForm,
     });
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
-      console.error("❌ Hydrax upload error:", errorText);
+      console.error("❌ Abyss upload error:", errorText);
       throw new Error(`❌ Upload failed: ${uploadResponse.status} - ${errorText}`);
     }
 
-    // ✅ Use safe JSON parsing
-    const data = await safeJsonParse(uploadResponse);
-    if (!data.slug) throw new Error("❌ Missing 'slug' in Hydrax response");
-
-    return NextResponse.json({ success: true, videoUrl: `https://short.icu/${data.slug}` });
+    // ✅ Return the response as JSON
+    const data = await uploadResponse.json();
+    return NextResponse.json({ success: true, ...data });
 
   } catch (error) {
     console.error("❌ Upload error:", error);
