@@ -479,6 +479,90 @@
 
 
 
+// "use server";
+
+// import { NextResponse } from "next/server";
+
+// const repoOwner = "rndsouza2024";
+// const repoName = "info";
+// const filePath = "info.json";
+// const token = process.env.GITHUB_TOKEN;
+
+// // Authenticate with Abyss
+// async function authenticateAbyss() {
+//   const response = await fetch("https://abyss.to/login", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({
+//       email: "dsouzarnd@gmail.com",
+//       password: "Navinjoyjeff131977",
+//     }),
+//   });
+
+//   if (!response.ok) throw new Error("❌ Authentication with Abyss failed");
+
+//   const authCookie = response.headers.get("set-cookie");
+//   if (!authCookie) throw new Error("❌ No authentication cookie received");
+
+//   return authCookie;
+// }
+
+// // ✅ Function to safely parse JSON and log response
+// async function safeJsonParse(response: Response) {
+//   const text = await response.text();
+//   try {
+//     return JSON.parse(text);
+//   } catch {
+//     console.error("❌ Unexpected non-JSON response:", text.slice(0, 200));
+//     throw new Error(`❌ Response is not valid JSON: ${text.slice(0, 100)}`);
+//   }
+// }
+
+// export async function POST(req: Request) {
+//   try {
+//     if (req.method !== "POST") {
+//       return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+//     }
+
+//     const authCookie = await authenticateAbyss();
+//     const formData = await req.formData();
+//     const file = formData.get("file") as File;
+    
+//     if (!(file instanceof Blob)) {
+//       return NextResponse.json({ error: "Invalid file format" }, { status: 400 });
+//     }
+
+//     const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+//     const hydraxForm = new FormData();
+//     hydraxForm.append("file", new Blob([fileBuffer], { type: file.type }), file.name);
+
+//     const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
+//       method: "POST",
+//       headers: { Cookie: authCookie },
+//       body: hydraxForm,
+//     });
+
+//     if (!uploadResponse.ok) {
+//       // ✅ Log the response before failing
+//       const errorText = await uploadResponse.text();
+//       console.error("❌ Hydrax upload error response:", errorText);
+//       throw new Error(`❌ Upload failed: ${uploadResponse.status} - ${errorText}`);
+//     }
+
+//     // ✅ Use safe JSON parsing to avoid errors
+//     const data = await safeJsonParse(uploadResponse);
+//     if (!data.slug) throw new Error("❌ Missing 'slug' in Hydrax response");
+
+//     return NextResponse.json({ success: true, videoUrl: `https://short.icu/${data.slug}` });
+
+//   } catch (error) {
+//     console.error("❌ Upload error:", error);
+//     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+//   }
+// }
+
+
 "use server";
 
 import { NextResponse } from "next/server";
@@ -488,7 +572,7 @@ const repoName = "info";
 const filePath = "info.json";
 const token = process.env.GITHUB_TOKEN;
 
-// Authenticate with Abyss
+// ✅ Authenticate with Abyss
 async function authenticateAbyss() {
   const response = await fetch("https://abyss.to/login", {
     method: "POST",
@@ -507,7 +591,7 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// ✅ Function to safely parse JSON and log response
+// ✅ Safe JSON Parsing with Logging
 async function safeJsonParse(response: Response) {
   const text = await response.text();
   try {
@@ -518,6 +602,7 @@ async function safeJsonParse(response: Response) {
   }
 }
 
+// ✅ Upload API Route
 export async function POST(req: Request) {
   try {
     if (req.method !== "POST") {
@@ -527,16 +612,20 @@ export async function POST(req: Request) {
     const authCookie = await authenticateAbyss();
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    
+
     if (!(file instanceof Blob)) {
       return NextResponse.json({ error: "Invalid file format" }, { status: 400 });
     }
 
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    // Convert file to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
+    // ✅ Prepare FormData for Hydrax
     const hydraxForm = new FormData();
-    hydraxForm.append("file", new Blob([fileBuffer], { type: file.type }), file.name);
+    hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
 
+    // ✅ Upload file to Hydrax (with Authentication)
     const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
       method: "POST",
       headers: { Cookie: authCookie },
@@ -544,13 +633,12 @@ export async function POST(req: Request) {
     });
 
     if (!uploadResponse.ok) {
-      // ✅ Log the response before failing
       const errorText = await uploadResponse.text();
-      console.error("❌ Hydrax upload error response:", errorText);
+      console.error("❌ Hydrax upload error:", errorText);
       throw new Error(`❌ Upload failed: ${uploadResponse.status} - ${errorText}`);
     }
 
-    // ✅ Use safe JSON parsing to avoid errors
+    // ✅ Use safe JSON parsing
     const data = await safeJsonParse(uploadResponse);
     if (!data.slug) throw new Error("❌ Missing 'slug' in Hydrax response");
 
