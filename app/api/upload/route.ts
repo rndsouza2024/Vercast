@@ -564,7 +564,6 @@
 
 
 
-
 "use server";
 
 import { NextResponse } from "next/server";
@@ -580,7 +579,11 @@ async function authenticateAbyss() {
     }),
   });
 
-  if (!response.ok) throw new Error("❌ Authentication with Abyss failed");
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("❌ Abyss login error:", errorText);
+    throw new Error(`❌ Abyss login failed: ${response.status}`);
+  }
 
   const authCookie = response.headers.get("set-cookie");
   if (!authCookie) throw new Error("❌ No authentication cookie received");
@@ -618,14 +621,20 @@ export async function POST(req: Request) {
       body: abyssForm,
     });
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error("❌ Abyss upload error:", errorText);
-      throw new Error(`❌ Upload failed: ${uploadResponse.status} - ${errorText}`);
+    // ✅ Log response headers
+    console.log("📢 Abyss Response Headers:", uploadResponse.headers);
+
+    // ✅ Read raw response text before parsing
+    const responseText = await uploadResponse.text();
+    console.log("📢 Abyss Raw Response:", responseText);
+
+    // ✅ Ensure response is JSON before parsing
+    const contentType = uploadResponse.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(`❌ Abyss response is not JSON: ${responseText.slice(0, 200)}`);
     }
 
-    // ✅ Return the response as JSON
-    const data = await uploadResponse.json();
+    const data = JSON.parse(responseText);
     return NextResponse.json({ success: true, ...data });
 
   } catch (error) {
