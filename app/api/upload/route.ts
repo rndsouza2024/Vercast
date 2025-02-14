@@ -1,4 +1,9 @@
 
+
+
+
+
+
 // "use server";
 
 // import { NextResponse } from "next/server";
@@ -220,17 +225,20 @@
 
 
 
-"use server";
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { NextResponse } from "next/server";
-
-// Environment variables
-const repoOwner = process.env.GITHUB_REPO_OWNER;
-const repoName = process.env.GITHUB_REPO_NAME;
-const filePath = process.env.GITHUB_FILE_PATH;
-const token = process.env.GITHUB_TOKEN;
-const abyssEmail = process.env.ABYSS_EMAIL;
-const abyssPassword = process.env.ABYSS_PASSWORD;
 
 // Abyss authentication function
 async function authenticateAbyss() {
@@ -238,8 +246,8 @@ async function authenticateAbyss() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: abyssEmail,
-      password: abyssPassword,
+      email: "dsouzarnd@gmail.com",
+      password: "Navinjoyjeff131977",
     }),
   });
 
@@ -256,102 +264,21 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// Fetch existing metadata from GitHub JSON
-async function fetchMetadata() {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) return {}; // Return empty if file doesn't exist
-
-  const fileData = await response.json();
-  const content = Buffer.from(fileData.content, "base64").toString();
-  return JSON.parse(content);
-}
-
-// Update GitHub JSON with new metadata
-async function updateMetadata(newData) {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-
-  const existingData = await fetchMetadata();
-  const updatedData = { ...existingData, ...newData };
-  const updatedContent = Buffer.from(JSON.stringify(updatedData, null, 2)).toString("base64");
-
-  const getFileResponse = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const fileData = await getFileResponse.json();
-  const sha = fileData.sha;
-
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message: "Update metadata",
-      content: updatedContent,
-      sha: sha,
-    }),
-  });
-
-  return response.ok;
-}
-
-// Upload a file to GitHub (for storing thumbnails)
-async function uploadToGitHub(fileName, fileBuffer, mimeType) {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/thumbnails/${fileName}`;
-
-  const base64Content = fileBuffer.toString("base64");
-
-  let sha = "";
-  const getFileResponse = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (getFileResponse.ok) {
-    const fileData = await getFileResponse.json();
-    sha = fileData.sha;
-  }
-
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message: `Upload ${fileName}`,
-      content: base64Content,
-      sha: sha || undefined,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload ${fileName} to GitHub`);
-  }
-
-  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/thumbnails/${fileName}`;
-}
-
-// **Upload API**
+// Upload API
 export async function POST(req) {
   try {
     if (req.method !== "POST") {
       return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
     }
 
-    // **Step 1: Authenticate with Abyss**
+    // Step 1: Authenticate with Abyss
     const authCookie = await authenticateAbyss();
 
-    // **Step 2: Extract file and metadata from request**
+    // Step 2: Extract file and metadata from request
     const formData = await req.formData();
     const file = formData.get("file");
     const title = formData.get("title");
     const description = formData.get("description");
-    const thumbnail = formData.get("thumbnail");
 
     if (!(file instanceof Blob)) {
       return NextResponse.json({ error: "Invalid or missing file" }, { status: 400 });
@@ -363,7 +290,7 @@ export async function POST(req) {
 
     console.log(`Received file: ${file.name} (${buffer.length} bytes)`);
 
-    // **Step 3: Upload file to Hydrax**
+    // Step 3: Upload file to Hydrax
     const hydraxForm = new FormData();
     hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
 
@@ -385,35 +312,15 @@ export async function POST(req) {
 
     console.log("File uploaded successfully:", data);
 
-    // **Step 4: Upload thumbnail to GitHub (if provided)**
-    let thumbnailUrl = "";
-    if (thumbnail) {
-      const arrayBuffer = await thumbnail.arrayBuffer();
-      const thumbnailBuffer = Buffer.from(arrayBuffer);
-      const fileName = `${file.name}.jpg`; // Store as JPEG in GitHub
-      thumbnailUrl = await uploadToGitHub(fileName, thumbnailBuffer, thumbnail.type);
-    }
-
-    // **Step 5: Store video metadata in GitHub JSON**
-    const newMetadata = {
-      [file.name]: {
-        title,
-        description,
-        thumbnailUrl,
-        videoUrl,
-      },
-    };
-
-    const success = await updateMetadata(newMetadata);
-    if (!success) {
-      return NextResponse.json({ success: false, message: "Failed to update GitHub" });
-    }
-
     return NextResponse.json({
       success: true,
       message: "Upload successful",
       videoUrl,
-      metadata: newMetadata,
+      metadata: {
+        title,
+        description,
+        videoUrl,
+      },
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -421,39 +328,14 @@ export async function POST(req) {
   }
 }
 
-// **Fetch Uploaded Data API**
-export async function GET() {
-  try {
-    const metadata = await fetchMetadata();
-    return NextResponse.json({ success: true, data: metadata });
-  } catch (error) {
-    console.error("Fetch error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-// Log environment variables (for debugging)
-console.log("Environment variables:");
-console.log("GITHUB_REPO_OWNER:", process.env.GITHUB_REPO_OWNER);
-console.log("GITHUB_REPO_NAME:", process.env.GITHUB_REPO_NAME);
-console.log("GITHUB_FILE_PATH:", process.env.GITHUB_FILE_PATH);
-console.log("GITHUB_TOKEN:", process.env.GITHUB_TOKEN ? "Set" : "Not set");
-console.log("ABYSS_EMAIL:", process.env.ABYSS_EMAIL);
-console.log("ABYSS_PASSWORD:", process.env.ABYSS_PASSWORD ? "Set" : "Not set");
-
-// Test the functions
-async function testFunctions() {
+// Test the authentication function
+async function testAuthentication() {
   try {
     const authCookie = await authenticateAbyss();
-    console.log("Abyss authentication successful");
-
-    const metadata = await fetchMetadata();
-    console.log("Fetched metadata:", metadata);
-
-    // Add more test cases as needed
+    console.log("Authentication successful. Cookie:", authCookie);
   } catch (error) {
-    console.error("Test error:", error);
+    console.error("Authentication failed:", error.message);
   }
 }
 
-testFunctions();
+testAuthentication();
