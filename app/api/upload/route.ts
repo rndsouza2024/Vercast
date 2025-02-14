@@ -479,7 +479,6 @@
 
 
 
-
 "use server";
 
 import { NextResponse } from "next/server";
@@ -489,6 +488,7 @@ const repoName = "info";
 const filePath = "info.json";
 const token = process.env.GITHUB_TOKEN;
 
+// Authenticate with Abyss
 async function authenticateAbyss() {
   const response = await fetch("https://abyss.to/login", {
     method: "POST",
@@ -507,13 +507,14 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// Function to safely parse JSON
+// ✅ Function to safely parse JSON and log response
 async function safeJsonParse(response: Response) {
   const text = await response.text();
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error(`❌ Response is not JSON: ${text.slice(0, 100)}`);
+    console.error("❌ Unexpected non-JSON response:", text.slice(0, 200));
+    throw new Error(`❌ Response is not valid JSON: ${text.slice(0, 100)}`);
   }
 }
 
@@ -543,7 +544,10 @@ export async function POST(req: Request) {
     });
 
     if (!uploadResponse.ok) {
-      throw new Error(`❌ Upload failed with status ${uploadResponse.status}: ${await uploadResponse.text()}`);
+      // ✅ Log the response before failing
+      const errorText = await uploadResponse.text();
+      console.error("❌ Hydrax upload error response:", errorText);
+      throw new Error(`❌ Upload failed: ${uploadResponse.status} - ${errorText}`);
     }
 
     // ✅ Use safe JSON parsing to avoid errors
