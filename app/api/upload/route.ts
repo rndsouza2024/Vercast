@@ -240,102 +240,80 @@
 
 import { NextResponse } from "next/server";
 
-// Abyss authentication function
+const HYDRAX_API = "https://api.hydrax.net/8162132ce5ca12ec2f06124d577cb23a/list";
+const ABYSS_LOGIN = "https://abyss.to/login";
+
+// ✅ Authenticate with Abyss (No Cache)
 async function authenticateAbyss() {
-  const response = await fetch("https://abyss.to/login", {
+  const response = await fetch(ABYSS_LOGIN, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email: "dsouzarnd@gmail.com",
       password: "Navinjoyjeff131977",
     }),
+    cache: "no-store", // ✅ Ensure fresh authentication request
   });
 
-  if (!response.ok) {
-    throw new Error("Authentication with Abyss failed");
-  }
+  if (!response.ok) throw new Error("❌ Authentication with Abyss failed");
 
   const authCookie = response.headers.get("set-cookie");
-  if (!authCookie) {
-    throw new Error("No authentication cookie received");
-  }
+  if (!authCookie) throw new Error("❌ No authentication cookie received");
 
-  console.log("Abyss authentication successful");
+  console.log("✅ Abyss authentication successful");
   return authCookie;
 }
 
-// Upload API
-export async function POST(req) {
-  try {
-    if (req.method !== "POST") {
-      return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
-    }
+// ✅ Fetch ALL video pages from Hydrax API (Force fresh data)
+async function fetchAllVideos(authCookie: string) {
+  let allVideos = [];
+  let currentPage = 1;
 
-    // Step 1: Authenticate with Abyss
-    const authCookie = await authenticateAbyss();
-
-    // Step 2: Extract file and metadata from request
-    const formData = await req.formData();
-    const file = formData.get("file");
-    const title = formData.get("title");
-    const description = formData.get("description");
-
-    if (!(file instanceof Blob)) {
-      return NextResponse.json({ error: "Invalid or missing file" }, { status: 400 });
-    }
-
-    // Convert file to Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    console.log(`Received file: ${file.name} (${buffer.length} bytes)`);
-
-    // Step 3: Upload file to Hydrax
-    const hydraxForm = new FormData();
-    hydraxForm.append("file", new Blob([buffer], { type: file.type }), file.name);
-
-    const uploadResponse = await fetch(
-      "http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a",
-      {
-        method: "POST",
-        headers: { Cookie: authCookie },
-        body: hydraxForm,
-      }
-    );
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-    }
-
-    const data = await uploadResponse.json();
-    const videoUrl = `https://short.icu/${data.slug}`;
-
-    console.log("File uploaded successfully:", data);
-
-    return NextResponse.json({
-      success: true,
-      message: "Upload successful",
-      videoUrl,
-      metadata: {
-        title,
-        description,
-        videoUrl,
+  while (true) {
+    const response = await fetch(`${HYDRAX_API}?page=${currentPage}&timestamp=${Date.now()}`, {
+      method: "GET",
+      headers: { 
+        Cookie: authCookie, 
+        "Cache-Control": "no-cache, no-store, must-revalidate" // ✅ Force fresh data
       },
+      cache: "no-store", // ✅ No caching in Next.js API routes
     });
+
+    if (!response.ok) throw new Error(`❌ Failed to fetch video list: ${response.statusText}`);
+
+    const data = await response.json();
+    if (!data.items || data.items.length === 0) break; // ✅ No more videos to fetch
+
+    // ✅ Remove deleted videos (Only keep videos with status "Ready")
+    const availableVideos = data.items.filter(video => video.status === "Ready");
+
+    allVideos = [...allVideos, ...availableVideos];
+
+    if (!data.pagination || data.pagination.next === 0) break; // ✅ Stop when there are no more pages
+
+    currentPage++;
+  }
+
+  return allVideos;
+}
+
+// ✅ API Route: Fetch Real-Time Video Data
+export async function GET() {
+  try {
+    const authCookie = await authenticateAbyss();
+    const videos = await fetchAllVideos(authCookie);
+
+    // ✅ Ensure deleted videos are removed in real-time
+    console.log(`✅ Retrieved ${videos.length} videos from Hydrax`);
+
+    return NextResponse.json(
+      { success: true, items: videos },
+      { headers: { "Cache-Control": "no-store, must-revalidate" } } // ✅ Prevent Vercel caching
+    );
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("❌ Fetch error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// Test the authentication function
-async function testAuthentication() {
-  try {
-    const authCookie = await authenticateAbyss();
-    console.log("Authentication successful. Cookie:", authCookie);
-  } catch (error) {
-    console.error("Authentication failed:", error.message);
-  }
-}
-
-testAuthentication();
+export const revalidate = 0; // ✅ Forces real-time updates in Vercel deployment
