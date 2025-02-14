@@ -590,7 +590,7 @@ async function authenticateAbyss() {
   return authCookie;
 }
 
-// ✅ Upload File to Abyss
+// ✅ Split file into chunks and upload
 export async function POST(req: Request) {
   try {
     if (req.method !== "POST") {
@@ -605,42 +605,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid file format" }, { status: 400 });
     }
 
-    // Convert file to Buffer
+    // ✅ Convert file to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // ✅ Check file size before uploading
-    const MAX_FILE_SIZE_MB = 50; // Adjust based on Abyss limits
-    if (buffer.length > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      throw new Error(`❌ File too large. Max allowed: ${MAX_FILE_SIZE_MB}MB`);
+    // ✅ Define chunk size (adjust based on Abyss limits)
+    const MAX_CHUNK_SIZE_MB = 10; // Split file into 10MB chunks
+    const CHUNK_SIZE = MAX_CHUNK_SIZE_MB * 1024 * 1024;
+    const totalChunks = Math.ceil(buffer.length / CHUNK_SIZE);
+
+    console.log(`📢 Splitting file into ${totalChunks} chunks...`);
+
+    let uploadedChunks = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, buffer.length);
+      const chunk = buffer.slice(start, end);
+
+      console.log(`📢 Uploading chunk ${i + 1}/${totalChunks}...`);
+
+      // ✅ Prepare FormData for chunk upload
+      const abyssForm = new FormData();
+      abyssForm.append("file", new Blob([chunk], { type: file.type }), `${file.name}.part${i}`);
+
+      // ✅ Upload chunk
+      const uploadResponse = await fetch("https://abyss.to/upload", {
+        method: "POST",
+        headers: { Cookie: authCookie },
+        body: abyssForm,
+      });
+
+      // ✅ Check response status
+      const responseText = await uploadResponse.text();
+      console.log("📢 Abyss Response:", responseText);
+
+      if (!uploadResponse.ok) {
+        throw new Error(`❌ Failed to upload chunk ${i + 1}: ${responseText}`);
+      }
+
+      uploadedChunks.push(`${file.name}.part${i}`);
     }
 
-    // ✅ Prepare FormData for Abyss
-    const abyssForm = new FormData();
-    abyssForm.append("file", new Blob([buffer], { type: file.type }), file.name);
+    console.log("✅ All chunks uploaded successfully!");
 
-    // ✅ Upload file to Abyss
-    const uploadResponse = await fetch("https://abyss.to/upload", {
-      method: "POST",
-      headers: { Cookie: authCookie },
-      body: abyssForm,
-    });
-
-    // ✅ Log response headers
-    console.log("📢 Abyss Response Headers:", uploadResponse.headers);
-
-    // ✅ Read raw response text before parsing
-    const responseText = await uploadResponse.text();
-    console.log("📢 Abyss Raw Response:", responseText);
-
-    // ✅ Ensure response is JSON before parsing
-    const contentType = uploadResponse.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      throw new Error(`❌ Abyss response is not JSON: ${responseText.slice(0, 200)}`);
-    }
-
-    const data = JSON.parse(responseText);
-    return NextResponse.json({ success: true, ...data });
+    return NextResponse.json({ success: true, message: "File uploaded in chunks", chunks: uploadedChunks });
 
   } catch (error) {
     console.error("❌ Upload error:", error);
