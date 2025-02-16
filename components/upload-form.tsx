@@ -819,12 +819,204 @@
 // }
 
 
+// "use client";
+
+// import { useState } from "react";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import { Loader2 } from "lucide-react";
+// import { Textarea } from "@/components/ui/textarea";
+// import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
+// export function UploadForm() {
+//   const [file, setFile] = useState<File | null>(null);
+//   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+//   const [status, setStatus] = useState("");
+//   const [uploading, setUploading] = useState(false);
+//   const [error, setError] = useState<string | null>(null);
+//   const [showMessage, setShowMessage] = useState(false);
+//   const [title, setTitle] = useState("");
+//   const [description, setDescription] = useState("");
+
+//   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//     e.preventDefault();
+//     if (!file || !title || !description) return;
+
+//     setUploading(true);
+//     setError(null);
+//     setStatus("Starting upload...");
+
+//     try {
+//       // 1. Get authentication cookie
+//       setStatus("Authenticating with Abyss...");
+//       const authResponse = await fetch("/api/auth", { method: "POST" });
+      
+//       if (!authResponse.ok) {
+//         const errorText = await authResponse.text();
+//         throw new Error(`Authentication failed: ${errorText}`);
+//       }
+
+//       const authData = await safeJsonParse(authResponse);
+//       if (!authData.cookie) throw new Error("No authentication cookie received");
+
+//       // 2. Upload to Hydrax
+//       setStatus("Uploading video...Wait patiently...");
+//       const hydraxForm = new FormData();
+//       hydraxForm.append("file", file, file.name);
+
+//       const uploadResponse = await fetch("https://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
+//         method: "POST",
+//         headers: { Cookie: authData.cookie },
+//         body: hydraxForm,
+//       });
+
+//       const responseText = await uploadResponse.text();
+//       const result = JSON.parse(responseText);
+
+//       if (!uploadResponse.ok || !result.slug) {
+//         throw new Error(result.error || "Upload failed");
+//       }
+
+//       const videoUrl = `https://short.icu/${result.slug}`;
+
+//       // 3. Update metadata through API route
+//       setStatus("Updating metadata...");
+//       const metadataResponse = await fetch("/api/metadata", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           title,
+//           description,
+//           videoUrl,
+//           thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
+//           fileName: file.name,
+//         }),
+//       });
+
+//       if (!metadataResponse.ok) {
+//         const errorText = await metadataResponse.text();
+//         throw new Error(`Metadata update failed: ${errorText}`);
+//       }
+
+//       setShowMessage(true);
+//       setStatus("Upload complete!");
+//     } catch (err) {
+//       const error = err as Error;
+//       setError(error.message);
+//       console.error("Upload error:", error);
+//     } finally {
+//       setUploading(false);
+//     }
+//   };
+
+//   const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+//     const reader = new FileReader();
+//     reader.readAsDataURL(file);
+//     reader.onload = () => resolve(reader.result as string);
+//     reader.onerror = error => reject(error);
+//   });
+
+//   const safeJsonParse = async (response: Response) => {
+//     try {
+//       return await response.json();
+//     } catch (error) {
+//       const text = await response.text();
+//       throw new Error(`Invalid JSON response: ${text.slice(0, 100)}`);
+//     }
+//   };
+
+//   return (
+//     <>
+//       <form onSubmit={handleSubmit} className="space-y-4">
+//         <div>
+//           <Label htmlFor="videoFile">Video File (MP4/MKV)</Label>
+//           <Input 
+//             type="file" 
+//             id="videoFile" 
+//             accept="video/mp4,video/x-matroska" 
+//             onChange={(e) => setFile(e.target.files?.[0] || null)} 
+//             required
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="title">Title</Label>
+//           <Input 
+//             id="title"
+//             value={title} 
+//             onChange={(e) => setTitle(e.target.value)} 
+//             required
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="description">Description</Label>
+//           <Textarea 
+//             id="description"
+//             value={description} 
+//             onChange={(e) => setDescription(e.target.value)} 
+//             required
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="thumbnail">Thumbnail (Optional)</Label>
+//           <Input 
+//             type="file" 
+//             id="thumbnail" 
+//             accept="image/*" 
+//             onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} 
+//           />
+//         </div>
+
+//         {error && (
+//           <p className="text-red-500 bg-red-50 p-2 rounded text-sm">
+//             ❌ {error}
+//           </p>
+//         )}
+
+//         {status && (
+//           <p className="text-green-500 bg-green-50 p-2 rounded text-sm">
+//             {status}
+//           </p>
+//         )}
+
+//         <Button type="submit" disabled={uploading} className="w-full">
+//           {uploading ? (
+//             <>
+//               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+//               Uploading...
+//             </>
+//           ) : (
+//             "Upload Video"
+//           )}
+//         </Button>
+//       </form>
+
+//       <Dialog open={showMessage} onOpenChange={setShowMessage}>
+//         <DialogContent>
+//           <DialogTitle>Upload Successful</DialogTitle>
+//           <p>Your video has been uploaded and is being processed.</p>
+//           <Button onClick={() => setShowMessage(false)} className="mt-4 w-full">
+//             OK
+//           </Button>
+//         </DialogContent>
+//       </Dialog>
+//     </>
+//   );
+// }
+
+
+
+//IMAGE UPDATED 
+
 "use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";  
 import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
