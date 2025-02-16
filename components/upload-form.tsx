@@ -1187,6 +1187,7 @@ export function UploadForm() {
             "Upload Video"
           )}
         </Button>
+        <p className="text-red-500 bg-green-50 p-2 rounded text-sm">"By uploading, you agree that your video may be reviewed and deleted if deemed inappropriate."</p>
       </form>
 
       <Dialog open={showMessage} onOpenChange={setShowMessage}>
