@@ -309,6 +309,215 @@
 
 
 
+// "use client";
+
+// import { useState } from "react";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import { Loader2 } from "lucide-react";
+// import { Textarea } from "@/components/ui/textarea";
+// import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
+// export function UploadForm() {
+//   const [file, setFile] = useState<File | null>(null);
+//   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+//   const [status, setStatus] = useState("");
+//   const [uploading, setUploading] = useState(false);
+//   const [error, setError] = useState<string | null>(null);
+//   const [showMessage, setShowMessage] = useState(false);
+//   const [title, setTitle] = useState("");
+//   const [description, setDescription] = useState("");
+
+//   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//     e.preventDefault();
+//     if (!file || !title || !description) return;
+
+//     setUploading(true);
+//     setError(null);
+//     setStatus("Starting upload...Wait Patiently... ");
+
+//     try {
+//       // 1. Get authentication cookie
+//       setStatus("Authenticating with Abyss...");
+//       const authResponse = await fetch("/api/auth", { method: "POST" });
+      
+//       if (!authResponse.ok) {
+//         const errorText = await authResponse.text();
+//         throw new Error(`Authentication failed: ${errorText}`);
+//       }
+
+//       const authData = await safeJsonParse(authResponse);
+//       if (!authData.cookie) throw new Error("No authentication cookie received");
+
+//       // 2. Upload to Hydrax using FormData
+//       setStatus("Uploading video...");
+//       const hydraxForm = new FormData();
+//       hydraxForm.append("file", file, file.name); // Append file to FormData
+
+//       try {
+//         const uploadResponse = await fetch("https://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
+//           method: "POST",
+//           headers: { Cookie: authData.cookie }, // Attach authentication cookie
+//           body: hydraxForm, // Use FormData for file upload
+//         });
+
+//         if (!uploadResponse.ok) {
+//           const responseText = await uploadResponse.text(); // Get detailed response
+//           console.error("Upload Failed:", uploadResponse.status, uploadResponse.statusText, responseText);
+//           throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+//         }
+
+//         const responseText = await uploadResponse.text();
+//         let result;
+//         try {
+//           result = JSON.parse(responseText);
+//         } catch {
+//           console.error("Non-JSON response:", responseText);
+//           throw new Error(`Unexpected response: ${responseText.slice(0, 50)}`);
+//         }
+
+//         if (!result.slug) {
+//           throw new Error(result.error || "Upload failed");
+//         }
+
+//         setStatus("Finalizing upload...");
+//         const videoUrl = `https://short.icu/${result.slug}`;
+
+//         // 3. Update metadata
+//         setStatus("Updating metadata...");
+//         const metadataResponse = await fetch("/api/metadata", {
+//           method: "POST",
+//           headers: { "Content-Type": "application/json" },
+//           body: JSON.stringify({
+//             title,
+//             description,
+//             videoUrl,
+//             thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
+//           }),
+//         });
+
+//         if (!metadataResponse.ok) {
+//           const errorText = await metadataResponse.text();
+//           throw new Error(`Metadata update failed: ${errorText}`);
+//         }
+
+//         setShowMessage(true);
+//         setStatus("Upload complete!");
+//       } catch (err) {
+//         const error = err as Error;
+//         setError(`Upload error: ${error.message}`);
+//         console.error("Upload error:", error);
+//       }
+
+//     } catch (err) {
+//       const error = err as Error;
+//       setError(`Authentication error: ${error.message}`);
+//       console.error("Authentication error:", error);
+//     } finally {
+//       setUploading(false);
+//     }
+//   };
+
+//   // Helper function to convert files to base64
+//   const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+//     const reader = new FileReader();
+//     reader.readAsDataURL(file);
+//     reader.onload = () => resolve(reader.result as string);
+//     reader.onerror = error => reject(error);
+//   });
+
+//   // Safe JSON parsing with error handling
+//   const safeJsonParse = async (response: Response) => {
+//     try {
+//       return await response.json();
+//     } catch (error) {
+//       const text = await response.text();
+//       throw new Error(`Invalid JSON response: ${text.slice(0, 100)}`);
+//     }
+//   };
+
+//   return (
+//     <>
+//       <form onSubmit={handleSubmit} className="space-y-4">
+//         {/* File Inputs */}
+//         <div>
+//           <Label htmlFor="videoFile">Video File</Label>
+//           <Input 
+//             type="file" 
+//             id="videoFile" 
+//             accept="video/mp4,video/mkv" 
+//             onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} 
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="thumbnail">Thumbnail</Label>
+//           <Input 
+//             type="file" 
+//             id="thumbnail" 
+//             accept="image/*" 
+//             onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)} 
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="title">Title</Label>
+//           <Input 
+//             type="text" 
+//             id="title" 
+//             value={title} 
+//             onChange={(e) => setTitle(e.target.value)} 
+//           />
+//         </div>
+
+//         <div>
+//           <Label htmlFor="description">Description</Label>
+//           <Textarea 
+//             id="description" 
+//             value={description} 
+//             onChange={(e) => setDescription(e.target.value)} 
+//           />
+//         </div>
+
+//         {error && (
+//           <p className="text-red-500 bg-red-50 p-2 rounded text-sm">
+//             ❌ {error}
+//           </p>
+//         )}
+
+//         {status && (
+//           <p className="text-green-500 bg-green-50 p-2 rounded text-sm">
+//             {status}
+//           </p>
+//         )}
+
+//         <Button type="submit" disabled={uploading}>
+//           {uploading ? <Loader2 className="animate-spin" /> : "Upload Video"}
+//         </Button>
+      
+//       </form>
+
+//       {/* <Dialog open={showMessage}>
+//         <DialogContent>
+//           <DialogTitle>Upload Complete</DialogTitle>
+//           <p>Your video is successfully uploaded!</p>
+//         </DialogContent>
+//       </Dialog> */}
+//         <Dialog open={showMessage} onOpenChange={setShowMessage}>
+//         <DialogContent>
+//           <DialogTitle>Upload Successful</DialogTitle>
+//           <p>Your video has been uploaded and is being processed. It will be available shortly.</p>
+//           <Button onClick={() => setShowMessage(false)} className="mt-4 w-full">
+//             OK
+//           </Button>
+//         </DialogContent>
+//       </Dialog>
+//     </>
+//   );
+// }
+
+
 "use client";
 
 import { useState } from "react";
@@ -319,9 +528,82 @@ import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
+// GitHub API configuration
+const repoOwner = "rndsouza2024"; // Replace with your GitHub username
+const repoName = "info"; // Replace with your repository name
+const filePath = "info.json"; // JSON file to store video metadata
+const token = process.env.GITHUB_TOKEN; // Use environment variable for GitHub token
+
+// Helper function to authenticate with Abyss
+async function authenticateAbyss() {
+  const response = await fetch("https://abyss.to/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: process.env.ABYSS_EMAIL,
+      password: process.env.ABYSS_PASSWORD,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Abyss authentication failed: ${errorText}`);
+  }
+
+  const authCookie = response.headers.get("set-cookie");
+  if (!authCookie) throw new Error("No authentication cookie received");
+
+  return authCookie;
+}
+
+// GitHub API to store metadata
+async function updateMetadata(newMetadata: any) {
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+  // Fetch existing file content to get the SHA
+  const existingFileResponse = await fetch(url, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  let fileContent = null;
+  let sha = null;
+  if (existingFileResponse.ok) {
+    const fileData = await existingFileResponse.json();
+    fileContent = fileData.content ? Buffer.from(fileData.content, "base64").toString("utf8") : "{}";
+    sha = fileData.sha; // Get the SHA for updates
+  } else {
+    fileContent = "{}"; // If no file exists, create new
+  }
+
+  const existingMetadata = JSON.parse(fileContent);
+  const updatedMetadata = { ...existingMetadata, ...newMetadata };
+
+  const githubResponse = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: "Update video metadata",
+      content: Buffer.from(JSON.stringify(updatedMetadata)).toString("base64"),
+      ...(sha && { sha }),  // Include SHA only if file exists
+    }),
+  });
+
+  if (!githubResponse.ok) {
+    const errorText = await githubResponse.text();
+    throw new Error(`GitHub update failed: ${errorText}`);
+  }
+}
+
+// Main UploadForm Component
 export function UploadForm() {
   const [file, setFile] = useState<File | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null); // For file upload thumbnail
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -335,7 +617,7 @@ export function UploadForm() {
 
     setUploading(true);
     setError(null);
-    setStatus("Starting upload...");
+    setStatus("Starting upload... Wait patiently...");
 
     try {
       // 1. Get authentication cookie
@@ -384,23 +666,17 @@ export function UploadForm() {
         setStatus("Finalizing upload...");
         const videoUrl = `https://short.icu/${result.slug}`;
 
-        // 3. Update metadata
+        // 3. Update metadata on GitHub
         setStatus("Updating metadata...");
-        const metadataResponse = await fetch("/api/metadata", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const metadata = {
+          [file.name]: {
             title,
             description,
             videoUrl,
             thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
-          }),
-        });
-
-        if (!metadataResponse.ok) {
-          const errorText = await metadataResponse.text();
-          throw new Error(`Metadata update failed: ${errorText}`);
-        }
+          },
+        };
+        await updateMetadata(metadata);
 
         setShowMessage(true);
         setStatus("Upload complete!");
@@ -498,13 +774,7 @@ export function UploadForm() {
       
       </form>
 
-      {/* <Dialog open={showMessage}>
-        <DialogContent>
-          <DialogTitle>Upload Complete</DialogTitle>
-          <p>Your video is successfully uploaded!</p>
-        </DialogContent>
-      </Dialog> */}
-        <Dialog open={showMessage} onOpenChange={setShowMessage}>
+      <Dialog open={showMessage} onOpenChange={setShowMessage}>
         <DialogContent>
           <DialogTitle>Upload Successful</DialogTitle>
           <p>Your video has been uploaded and is being processed. It will be available shortly.</p>
@@ -516,5 +786,3 @@ export function UploadForm() {
     </>
   );
 }
-
-
