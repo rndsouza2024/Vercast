@@ -838,14 +838,21 @@ async function authenticateAbyss() {
 }
 
 // GitHub API to store metadata
+// GitHub API to store metadata (server-side only)
 async function updateMetadata(newMetadata: any) {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
-  // Fetch existing file content to get the SHA
+  // Get GitHub token from environment variables
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error("GitHub token is not configured");
+  }
+
+  // Fetch existing file
   const existingFileResponse = await fetch(url, {
     headers: {
       "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
+      "Accept": "application/vnd.github+json",
     },
   });
 
@@ -957,7 +964,15 @@ export function UploadForm() {
             thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
           },
         };
-        await updateMetadata(metadata);
+
+        // Update metadata with error handling
+        try {
+          await updateMetadata(metadata);
+        } catch (githubError) {
+          console.error("GitHub update failed:", githubError);
+          setError("Video uploaded successfully but metadata update failed");
+          // Consider implementing retry logic for metadata update
+        }
 
         setShowMessage(true);
         setStatus("Upload complete!");
