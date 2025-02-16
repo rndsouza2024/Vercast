@@ -324,7 +324,6 @@ export function UploadForm() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
-  
   const [error, setError] = useState<string | null>(null);
   const [showMessage, setShowMessage] = useState(false);
   const [title, setTitle] = useState("");
@@ -336,7 +335,6 @@ export function UploadForm() {
 
     setUploading(true);
     setError(null);
-    setProgress(50)
     setStatus("Starting upload...");
 
     try {
@@ -496,8 +494,10 @@ export function UploadForm() {
 
         <Button type="submit" disabled={uploading}>
           {uploading ? <Loader2 className="animate-spin" /> : "Upload Video"}
+          Uploading... {progress}% Wait...
+
         </Button>
-      
+        <p>"By uploading, you agree that your video may be reviewed and deleted if deemed inappropriate."</p>
       </form>
 
       {/* <Dialog open={showMessage}>
