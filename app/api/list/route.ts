@@ -460,6 +460,87 @@
 
 // "use server";
 
+// import { NextResponse } from "next/server"
+
+// const HYDRAX_API = "https://api.hydrax.net/8162132ce5ca12ec2f06124d577cb23a/list"
+// const ABYSS_LOGIN = "https://abyss.to/login"
+
+// // Authenticate with Abyss (No Cache)
+// async function authenticateAbyss() {
+//   const response = await fetch(ABYSS_LOGIN, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({
+//       email: "dsouzarnd@gmail.com",
+//       password: "Navinjoyjeff131977",
+//     }),
+//     cache: "no-store", // Ensure fresh authentication request
+//   })
+
+//   if (!response.ok) throw new Error("❌ Authentication with Abyss failed")
+
+//   const authCookie = response.headers.get("set-cookie")
+//   if (!authCookie) throw new Error("❌ No authentication cookie received")
+
+//   console.log("✅ Abyss authentication successful")
+//   return authCookie
+// }
+
+// // Fetch ALL video pages from Hydrax API (Force fresh data)
+// async function fetchAllVideos(authCookie: string) {
+//   let allVideos = []
+//   let currentPage = 1
+
+//   while (true) {
+//     const response = await fetch(`${HYDRAX_API}?page=${currentPage}&timestamp=${Date.now()}`, {
+//       method: "GET",
+//       headers: {
+//         Cookie: authCookie,
+//         "Cache-Control": "no-cache, no-store, must-revalidate", // Force fresh data
+//       },
+//       cache: "no-store", // No caching in Next.js API routes
+//     })
+
+//     if (!response.ok) throw new Error(`❌ Failed to fetch video list: ${response.statusText}`)
+
+//     const data = await response.json()
+//     if (!data.items || data.items.length === 0) break // No more videos to fetch
+
+//     // Remove deleted videos (Only keep videos with status "Ready")
+//     const availableVideos = data.items.filter((video) => video.status === "Ready")
+
+//     allVideos = [...allVideos, ...availableVideos]
+
+//     if (!data.pagination || data.pagination.next === 0) break // Stop when there are no more pages
+
+//     currentPage++
+//   }
+
+//   return allVideos
+// }
+
+// // API Route: Fetch Real-Time Video Data
+// export async function GET() {
+//   try {
+//     const authCookie = await authenticateAbyss()
+//     const videos = await fetchAllVideos(authCookie)
+
+//     // Ensure deleted videos are removed in real-time
+//     console.log(`✅ Retrieved ${videos.length} videos from Hydrax`)
+
+//     return NextResponse.json(
+//       { success: true, items: videos },
+//       { headers: { "Cache-Control": "no-store, must-revalidate" } }, // Prevent Vercel caching
+//     )
+//   } catch (error) {
+//     console.error("❌ Fetch error:", error)
+//     return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 })
+//   }
+// }
+
+// export const revalidate = 0 // Forces real-time updates in Vercel deployment
+
+/// IMAGE ADDED 
 import { NextResponse } from "next/server"
 
 const HYDRAX_API = "https://api.hydrax.net/8162132ce5ca12ec2f06124d577cb23a/list"
@@ -519,17 +600,48 @@ async function fetchAllVideos(authCookie: string) {
   return allVideos
 }
 
+// Fetch GitHub info.json for video metadata
+async function fetchGithubInfo() {
+  try {
+    const response = await fetch("https://raw.githubusercontent.com/rndsouza2024/info/main/info.json", {
+      cache: "no-store" // Ensure fresh data
+    })
+    if (!response.ok) throw new Error(`GitHub responded with ${response.status}`)
+    return await response.json()
+  } catch (error) {
+    console.warn("❌ Failed to fetch GitHub info.json:", error)
+    return {}
+  }
+}
+
 // API Route: Fetch Real-Time Video Data
 export async function GET() {
   try {
     const authCookie = await authenticateAbyss()
     const videos = await fetchAllVideos(authCookie)
+    const githubData = await fetchGithubInfo()
+
+    // Merge GitHub data with the fetched video data
+    const mergedVideos = videos.map((video) => {
+      const githubInfo = 
+        githubData[video.name] || 
+        githubData[`${video.name}.mp4`] || 
+        {}; // Default to empty object if no match
+
+      return {
+        ...video,
+        title: githubInfo?.title || video.name,
+        description: githubInfo?.description || "No description available",
+        thumbnailUrl: githubInfo?.thumbnailUrl || "", // Use thumbnail URL from GitHub
+        videoUrl: `https://short.icu/${video.slug}`, // Construct video embed URL
+      }
+    })
 
     // Ensure deleted videos are removed in real-time
-    console.log(`✅ Retrieved ${videos.length} videos from Hydrax`)
+    console.log(`✅ Retrieved ${mergedVideos.length} videos from Hydrax`)
 
     return NextResponse.json(
-      { success: true, items: videos },
+      { success: true, items: mergedVideos },
       { headers: { "Cache-Control": "no-store, must-revalidate" } }, // Prevent Vercel caching
     )
   } catch (error) {
@@ -539,4 +651,3 @@ export async function GET() {
 }
 
 export const revalidate = 0 // Forces real-time updates in Vercel deployment
-
