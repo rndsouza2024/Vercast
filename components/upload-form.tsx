@@ -309,7 +309,6 @@
 
 
 
-
 "use client";
 
 import { useState } from "react";
@@ -356,58 +355,65 @@ export function UploadForm() {
       const hydraxForm = new FormData();
       hydraxForm.append("file", file, file.name); // Append file to FormData
 
-      const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
-        method: "POST",
-        headers: { Cookie: authData.cookie }, // Attach authentication cookie
-        body: hydraxForm, // Use FormData for file upload
-      });
-
-      if (!uploadResponse.ok) {
-        console.error("Fetch Error:", uploadResponse.status, uploadResponse.statusText);
-        throw new Error("Network response was not ok");
-      }
-
-      const responseText = await uploadResponse.text();
-      let result;
       try {
-        result = JSON.parse(responseText);
-      } catch {
-        console.error("Non-JSON response:", responseText);
-        throw new Error(`Unexpected response: ${responseText.slice(0, 50)}`);
+        const uploadResponse = await fetch("https://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
+          method: "POST",
+          headers: { Cookie: authData.cookie }, // Attach authentication cookie
+          body: hydraxForm, // Use FormData for file upload
+        });
+
+        if (!uploadResponse.ok) {
+          const responseText = await uploadResponse.text(); // Get detailed response
+          console.error("Upload Failed:", uploadResponse.status, uploadResponse.statusText, responseText);
+          throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+        }
+
+        const responseText = await uploadResponse.text();
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          console.error("Non-JSON response:", responseText);
+          throw new Error(`Unexpected response: ${responseText.slice(0, 50)}`);
+        }
+
+        if (!result.slug) {
+          throw new Error(result.error || "Upload failed");
+        }
+
+        setStatus("Finalizing upload...");
+        const videoUrl = `https://short.icu/${result.slug}`;
+
+        // 3. Update metadata
+        setStatus("Updating metadata...");
+        const metadataResponse = await fetch("/api/metadata", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description,
+            videoUrl,
+            thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
+          }),
+        });
+
+        if (!metadataResponse.ok) {
+          const errorText = await metadataResponse.text();
+          throw new Error(`Metadata update failed: ${errorText}`);
+        }
+
+        setShowMessage(true);
+        setStatus("Upload complete!");
+      } catch (err) {
+        const error = err as Error;
+        setError(`Upload error: ${error.message}`);
+        console.error("Upload error:", error);
       }
-
-      if (!result.slug) {
-        throw new Error(result.error || "Upload failed");
-      }
-
-      setStatus("Finalizing upload...");
-      const videoUrl = `https://short.icu/${result.slug}`;
-
-      // 3. Update metadata
-      setStatus("Updating metadata...");
-      const metadataResponse = await fetch("/api/metadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description,
-          videoUrl,
-          thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
-        }),
-      });
-
-      if (!metadataResponse.ok) {
-        const errorText = await metadataResponse.text();
-        throw new Error(`Metadata update failed: ${errorText}`);
-      }
-
-      setShowMessage(true);
-      setStatus("Upload complete!");
 
     } catch (err) {
       const error = err as Error;
-      setError(error.message);
-      console.error("Upload error:", error);
+      setError(`Authentication error: ${error.message}`);
+      console.error("Authentication error:", error);
     } finally {
       setUploading(false);
     }
@@ -486,25 +492,15 @@ export function UploadForm() {
           </p>
         )}
 
-        <Button type="submit" disabled={uploading} className="w-full">
-          {uploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {status}...
-            </>
-          ) : (
-            "Upload Video"
-          )}
+        <Button type="submit" disabled={uploading}>
+          {uploading ? <Loader2 className="animate-spin" /> : "Upload Video"}
         </Button>
       </form>
 
-      <Dialog open={showMessage} onOpenChange={setShowMessage}>
+      <Dialog open={showMessage}>
         <DialogContent>
-          <DialogTitle>Upload Successful</DialogTitle>
-          <p>Your video is now being processed and will be available shortly.</p>
-          <Button onClick={() => setShowMessage(false)} className="mt-4 w-full">
-            OK
-          </Button>
+          <DialogTitle>Upload Complete</DialogTitle>
+          <p>Your video is successfully uploaded!</p>
         </DialogContent>
       </Dialog>
     </>
