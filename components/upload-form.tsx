@@ -351,18 +351,22 @@ export function UploadForm() {
       const authData = await safeJsonParse(authResponse);
       if (!authData.cookie) throw new Error("No authentication cookie received");
 
-      // 2. Upload to Hydrax
+      // 2. Upload to Hydrax using FormData
       setStatus("Uploading video...");
       const hydraxForm = new FormData();
-      hydraxForm.append("file", file, file.name);
+      hydraxForm.append("file", file, file.name); // Append file to FormData
 
       const uploadResponse = await fetch("http://up.hydrax.net/8162132ce5ca12ec2f06124d577cb23a", {
         method: "POST",
-        headers: { Cookie: authData.cookie },
-        body: hydraxForm,
+        headers: { Cookie: authData.cookie }, // Attach authentication cookie
+        body: hydraxForm, // Use FormData for file upload
       });
 
-      // Handle non-JSON responses
+      if (!uploadResponse.ok) {
+        console.error("Fetch Error:", uploadResponse.status, uploadResponse.statusText);
+        throw new Error("Network response was not ok");
+      }
+
       const responseText = await uploadResponse.text();
       let result;
       try {
@@ -372,7 +376,7 @@ export function UploadForm() {
         throw new Error(`Unexpected response: ${responseText.slice(0, 50)}`);
       }
 
-      if (!uploadResponse.ok || !result.slug) {
+      if (!result.slug) {
         throw new Error(result.error || "Upload failed");
       }
 
