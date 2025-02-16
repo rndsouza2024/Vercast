@@ -519,6 +519,7 @@
 
 
 
+
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -568,38 +569,13 @@ export function UploadForm() {
         throw new Error(`Upload failed: ${errorText}`);
       }
 
-      // Step 3: Handle response from Hydrax
+      // Step 3: Handle response
       const result = await uploadResponse.json();
       if (!result.slug) throw new Error("Invalid upload response");
 
-      // Step 4: Update metadata on GitHub (send data like title, description, and slug)
       setStatus("Upload successful! Updating metadata...");
-      const metadataResponse = await fetch("https://api.github.com/repos/your-github-username/your-repo/contents/path/to/your/file.json", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `token YOUR_GITHUB_TOKEN`,
-        },
-        body: JSON.stringify({
-          message: "Update metadata for new video",
-          content: btoa(
-            JSON.stringify({
-              slug: result.slug,
-              title,
-              description,
-              thumbnailUrl: thumbnailFile ? URL.createObjectURL(thumbnailFile) : "", // Optionally handle thumbnail URL
-            })
-          ),
-          sha: "sha-of-the-existing-file-if-applicable", // Optional: provide the sha of the file you're updating
-        }),
-      });
-
-      if (!metadataResponse.ok) {
-        const errorText = await metadataResponse.text();
-        throw new Error(`GitHub update failed: ${errorText}`);
-      }
-
       setShowMessage(true);
+
     } catch (err) {
       setError((err as Error).message);
     } finally {
