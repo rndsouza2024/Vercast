@@ -1016,7 +1016,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";  
+import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -1030,6 +1030,8 @@ export function UploadForm() {
   const [showMessage, setShowMessage] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
+  const thumbnailsFolder = "thumbnails";  // Define folder for thumbnails
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1083,6 +1085,7 @@ export function UploadForm() {
           videoUrl,
           thumbnail: thumbnailFile ? await toBase64(thumbnailFile) : null,
           fileName: file.name,
+          thumbnailsFolder,  // Include the thumbnails folder
         }),
       });
 

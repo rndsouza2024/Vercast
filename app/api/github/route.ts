@@ -559,95 +559,72 @@
 
 "use server";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const repoOwner = "rndsouza2024"; // Replace with your GitHub username
-const repoName = "info"; // Replace with your repository name
-const filePath = "info.json"; // JSON file to store video metadata
+// Define the folder where you want to store thumbnails
+const repoOwner = "rndsouza2024";
+const repoName = "info";
+const filePath = "info.json";
+const thumbnailsFolder = "thumbnails"; // Folder where thumbnails will be stored
 
-// Use environment variable
-const token = process.env.GITHUB_TOKEN;
-
-if (!token) {
-  throw new Error("GITHUB_TOKEN environment variable is not set");
-}
-
-// Fetch existing metadata
-async function fetchMetadata() {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      return {}; // Return empty if file doesn't exist
-    }
-    throw new Error(`GitHub API error: ${response.statusText}`);
-  }
-
-  const fileData = await response.json();
-  const content = atob(fileData.content);
-  return JSON.parse(content);
-}
-
-// Upload thumbnail to GitHub
-async function uploadThumbnailToGitHub(thumbnailFile: File, fileName: string) {
-  const thumbnailBlob = await thumbnailFile.arrayBuffer();
-  const base64Thumbnail = Buffer.from(thumbnailBlob).toString("base64");
-
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/thumbnails/${fileName}.jpg`;
-
-  const githubResponse = await fetch(url, {
-    method: "PUT",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message: "Upload video thumbnail",
-      content: base64Thumbnail,
-    }),
-  });
-
-  if (!githubResponse.ok) {
-    const errorText = await githubResponse.text();
-    throw new Error(`GitHub thumbnail upload failed: ${errorText}`);
-  }
-
-  const fileData = await githubResponse.json();
-  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/thumbnails/${fileName}.jpg`;
-}
-
-// Update or create video metadata
-async function updateMetadata(newMetadata: any) {
-  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-
+export async function POST(req: NextRequest) {
   try {
-    // Fetch existing metadata
-    const existingData = await fetchMetadata();
-    const updatedData = { ...existingData, ...newMetadata };
-    const updatedContent = btoa(JSON.stringify(updatedData, null, 2));
+    const { title, description, videoUrl, thumbnail, fileName } = await req.json();
+    const token = process.env.GITHUB_TOKEN;
 
-    // Get file SHA if it exists
-    let sha;
-    try {
-      const fileResponse = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (fileResponse.ok) {
-        const fileData = await fileResponse.json();
-        sha = fileData.sha;
-      }
-    } catch (error) {
-      console.warn("File doesn't exist yet, creating new one");
+    if (!token) {
+      return NextResponse.json(
+        { error: "GitHub token not configured" },
+        { status: 500 }
+      );
     }
 
-    // Update or create the file with metadata
+    // Step 1: Upload the thumbnail image to GitHub
+    const thumbnailFileName = `${fileName}.jpg`; // Generate a unique name for the thumbnail
+    const thumbnailFilePath = `${thumbnailsFolder}/${thumbnailFileName}`;
+
+    // Upload the thumbnail image to GitHub
+    const uploadThumbnailResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${thumbnailFilePath}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: `Upload thumbnail for video: ${title}`,
+        content: thumbnail.split(',')[1], // Get Base64 data (remove the prefix part)
+      }),
+    });
+
+    if (!uploadThumbnailResponse.ok) {
+      const errorText = await uploadThumbnailResponse.text();
+      return NextResponse.json({ error: `Failed to upload thumbnail: ${errorText}` }, { status: 500 });
+    }
+
+    // Step 2: Generate the URL for the uploaded thumbnail
+    const thumbnailUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${thumbnailsFolder}/${thumbnailFileName}`;
+
+    // Step 3: Get existing metadata file from GitHub
+    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+    const existingResponse = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    let existingData = {};
+    let sha = null;
+    if (existingResponse.ok) {
+      const fileData = await existingResponse.json();
+      existingData = JSON.parse(Buffer.from(fileData.content, "base64").toString());
+      sha = fileData.sha;
+    }
+
+    // Step 4: Update metadata with the thumbnail URL
+    const updatedData = {
+      ...existingData,
+      [fileName]: { title, description, videoUrl, thumbnailUrl }, // Add the thumbnail URL
+    };
+
+    // Step 5: Commit the metadata changes to GitHub
     const response = await fetch(url, {
       method: "PUT",
       headers: {
@@ -655,55 +632,24 @@ async function updateMetadata(newMetadata: any) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: "Update video metadata",
-        content: updatedContent,
-        ...(sha && { sha }), // Only include sha if file exists
+        message: `Add video: ${title}`,
+        content: Buffer.from(JSON.stringify(updatedData)).toString("base64"),
+        sha,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to update GitHub: ${response.statusText}`);
+      const errorText = await response.text();
+      return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
-    return true;
-  } catch (error) {
-    console.error("GitHub update error:", error);
-    return false;
-  }
-}
+    return NextResponse.json({ success: true });
 
-// GET endpoint to fetch all metadata
-export async function GET() {
-  try {
-    const metadata = await fetchMetadata();
-    return NextResponse.json(metadata);
-  } catch (error) {
-    console.error("Failed to fetch metadata:", error);
-    return NextResponse.json({ error: "Failed to fetch metadata" }, { status: 500 });
-  }
-}
-
-// POST endpoint to update metadata
-export async function POST(req: Request) {
-  try {
-    const data = await req.json();
-
-    // Check if thumbnail file is provided and upload it to GitHub
-    if (data.thumbnailFile) {
-      const thumbnailUrl = await uploadThumbnailToGitHub(data.thumbnailFile, data.fileName);
-      data.thumbnailUrl = thumbnailUrl; // Assign the thumbnail URL to the metadata
-    }
-
-    const success = await updateMetadata(data);
-
-    if (!success) {
-      return NextResponse.json({ success: false, message: "Failed to update GitHub" }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    console.error("Failed to update metadata:", error);
-    return NextResponse.json({ success: false, message: "Failed to process request" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
 

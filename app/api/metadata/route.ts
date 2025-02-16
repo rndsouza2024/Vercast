@@ -70,10 +70,11 @@ import { NextRequest, NextResponse } from "next/server";
 const repoOwner = "rndsouza2024";
 const repoName = "info";
 const filePath = "info.json";
+const thumbnailsFolder = "thumbnails"; // Folder for thumbnails
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, description, videoUrl, thumbnail, fileName } = await req.json();
+    const { title, description, videoUrl, thumbnail, fileName, thumbnailsFolder } = await req.json();
     const token = process.env.GITHUB_TOKEN;
 
     if (!token) {
@@ -97,23 +98,47 @@ export async function POST(req: NextRequest) {
       sha = fileData.sha;
     }
 
-    // Update metadata with the thumbnail Base64 value
+    // Save thumbnail to GitHub in the defined folder
+    const thumbnailFileName = `${fileName}.jpg`; // Generate unique name for thumbnail
+    const thumbnailFilePath = `${thumbnailsFolder}/${thumbnailFileName}`;
+
+    // Upload the thumbnail to GitHub
+    const uploadThumbnailResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${thumbnailFilePath}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: `Upload thumbnail for video: ${title}`,
+        content: thumbnail.split(',')[1], // Base64 data (without the prefix part)
+      }),
+    });
+
+    if (!uploadThumbnailResponse.ok) {
+      const errorText = await uploadThumbnailResponse.text();
+      return NextResponse.json({ error: `Failed to upload thumbnail: ${errorText}` }, { status: 500 });
+    }
+
+    const thumbnailUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${thumbnailsFolder}/${thumbnailFileName}`;
+
+    // Update metadata with thumbnail URL
     const updatedData = {
       ...existingData,
-      [fileName]: { title, description, videoUrl, thumbnail }
+      [fileName]: { title, description, videoUrl, thumbnailUrl },
     };
 
-    // Commit changes
+    // Commit the changes to GitHub
     const response = await fetch(url, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         message: `Add video: ${title}`,
         content: Buffer.from(JSON.stringify(updatedData)).toString("base64"),
-        sha
+        sha,
       })
     });
 
