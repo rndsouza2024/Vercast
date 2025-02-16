@@ -494,10 +494,8 @@ export function UploadForm() {
 
         <Button type="submit" disabled={uploading}>
           {uploading ? <Loader2 className="animate-spin" /> : "Upload Video"}
-          Uploading... {progress}% Wait...
-
         </Button>
-        <p>"By uploading, you agree that your video may be reviewed and deleted if deemed inappropriate."</p>
+      
       </form>
 
       {/* <Dialog open={showMessage}>
@@ -506,8 +504,7 @@ export function UploadForm() {
           <p>Your video is successfully uploaded!</p>
         </DialogContent>
       </Dialog> */}
-      
-      <Dialog open={showMessage} onOpenChange={setShowMessage}>
+        <Dialog open={showMessage} onOpenChange={setShowMessage}>
         <DialogContent>
           <DialogTitle>Upload Successful</DialogTitle>
           <p>Your video has been uploaded and is being processed. It will be available shortly.</p>
