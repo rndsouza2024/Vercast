@@ -163,12 +163,13 @@ export default function RootLayout({
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta
           name="google-site-verification"
-          content="o8uNsADswyHnNPA69n9gI7u6L4_cdjN4iT5lRhHHtMU"
+          content="4gdbnCGat0T4Ow3Y_RYzPM4vwtsXvhUel5Q-2yULK6k"
         />
+     
       </head>
       <body className={inter.className}>
         <Navbar /> {/* Place the Navbar here */}
-        <GoogleAnalytics measurementId="G-P3E2NGMBQ1" />
+        <GoogleAnalytics measurementId="G-Q23HGX0T74" />
         {children} {/* Render the page content */}
         <Footer /> {/* Footer added here */}
       </body>
