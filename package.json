@@ -65,6 +65,7 @@
     "vaul": "^0.9.6",
     "video.js": "^8.21.0",
     "videojs-vast-vpaid": "^3.0.0-beta.8",
+    "webpack": "^5.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
