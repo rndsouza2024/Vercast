@@ -1,0 +1,22 @@
+<VAST version="3.0">
+  <Ad>
+    <InLine>
+      <AdSystem>VAST 3.0</AdSystem>
+      <AdTitle>Pre-Roll Ad</AdTitle>
+      <!-- <Impression><![CDATA[https://example.com/impression]]></Impression> -->
+      <Creatives>
+        <Creative sequence="1">
+          <Linear>
+            <Duration>00:00:30</Duration>
+            <AdParameters><![CDATA[Pre-Roll Ad with Popup]]></AdParameters>
+            <MediaFiles>
+              <MediaFile delivery="progressive" type="video/mp4" width="640" height="360">
+                <![CDATA[https://res.cloudinary.com/dm37icb6j/video/upload/v1739780652/ads_a6jlo7.mp4]]>
+              </MediaFile>
+            </MediaFiles>
+          </Linear>
+        </Creative>
+      </Creatives>
+    </InLine>
+  </Ad>
+</VAST>
