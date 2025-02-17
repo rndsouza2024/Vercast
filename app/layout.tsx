@@ -102,6 +102,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Navbar from "../components/Navbar"; // Import the Navbar component
 import Footer from "../components/Footer"; // Import the Footer component
+import GoogleAnalytics from '@bradgarropy/next-google-analytics';
 import "./globals.css";
 import type React from "react";
 
@@ -167,6 +168,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Navbar /> {/* Place the Navbar here */}
+        <GoogleAnalytics measurementId="G-P3E2NGMBQ1" />
         {children} {/* Render the page content */}
         <Footer /> {/* Footer added here */}
       </body>
