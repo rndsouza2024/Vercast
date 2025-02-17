@@ -493,7 +493,7 @@ export default function Home() {
 
           {user ? (
             <>
-              <p className="text-lg text-white font-medium">Welcome, {user.displayName}</p>
+              <p className="text-lg text-black font-medium">Welcome, {user.displayName}</p>
               <Button
                 onClick={handleGoogleLogout}
                 className="bg-red-500 text-black font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition duration-300"
