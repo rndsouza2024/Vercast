@@ -481,7 +481,7 @@ export default function Home() {
                 Upload Video
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] p-6 bg-black rounded-xl shadow-lg">
+            <DialogContent className="sm:max-w-[425px] p-6 bg-white rounded-xl shadow-lg">
               <DialogTitle className="text-2xl font-bold text-gray-800">Upload Video</DialogTitle>
               {user ? (
                 <UploadForm onUploadSuccess={handleUploadSuccess} />
@@ -504,7 +504,7 @@ export default function Home() {
           ) : (
             <Button
               onClick={handleGoogleLogin}
-              className="bg-green-500 text-black font-semibold px-6 py-3 rounded-lg hover:bg-green-600 transition duration-300"
+              className="bg-green-500 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-600 transition duration-300"
             >
               Join with Google
             </Button>
