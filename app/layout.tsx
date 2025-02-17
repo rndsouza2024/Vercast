@@ -165,7 +165,13 @@ export default function RootLayout({
           name="google-site-verification"
           content="4gdbnCGat0T4Ow3Y_RYzPM4vwtsXvhUel5Q-2yULK6k"
         />
-     
+        <meta
+          property='og:image'
+          content='https://vercast.vercel.app/og_image.jpg'
+        />
+        <meta property='og:image:width' content='1280' />
+        <meta property='og:image:height' content='720' />
+        <meta property='og:image:type' content='image/jpg' />
       </head>
       <body className={inter.className}>
         <Navbar /> {/* Place the Navbar here */}
