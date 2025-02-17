@@ -56,10 +56,14 @@
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
+    "sass": "^1.85.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "url-loader": "^4.1.1",
     "vaul": "^0.9.6",
+    "video.js": "^8.21.0",
+    "videojs-vast-vpaid": "^3.0.0-beta.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {
