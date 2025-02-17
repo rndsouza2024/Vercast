@@ -61,7 +61,7 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "url-loader": "^4.1.1",
+    "url-loader": "^4.0.0",
     "vaul": "^0.9.6",
     "video.js": "^8.21.0",
     "videojs-vast-vpaid": "^3.0.0-beta.8",
