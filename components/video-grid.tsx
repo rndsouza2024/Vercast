@@ -433,6 +433,14 @@ export function VideoGrid() {
                       height={180}
                       layout="responsive"
                       className="rounded-lg object-cover"
+                      quality={90}
+                      style={{
+                        // borderRadius: "50px", // Rounded corners for the image
+                        boxShadow: "0 0 10px 0 #000", // Shadow effect
+                        filter:
+                          "contrast(1.2) saturate(1.2) brightness(1.2) hue-rotate(0deg)", // Image filter effects
+                      }}
+
                     />
                   ) : (
                     <div className="flex items-center justify-center bg-gray-200 text-gray-500 w-full h-full">
