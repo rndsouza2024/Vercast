@@ -1,42 +1,3 @@
-// "use client"
-// import { useState } from "react";
-// import Link from "next/link"; // Use Next.js Link for navigation
-
-// const Navbar: React.FC = () => {
-//   const [isOpen, setIsOpen] = useState<boolean>(false);
-
-//   const toggleNavbar = () => {
-//     setIsOpen(!isOpen); // Toggle navbar visibility on mobile
-//   };
-
-//   return (
-//     <nav className="bg-indigo-900 p-4">
-//       <div className="max-w-7xl mx-auto flex justify-between items-center">
-//         <h1 className="text-white text-2xl font-bold">Vercast Video</h1>
-//         <button
-//           className="text-white md:hidden"
-//           onClick={toggleNavbar}
-//         >
-//           {isOpen ? "Close" : "Menu"} {/* Toggle button */}
-//         </button>
-//         <div
-//           className={`${isOpen ? "block" : "hidden"} md:flex space-x-6`} // Show links in desktop and toggle in mobile
-//         >
-//           <Link href="/" className="text-white">Home</Link>
-//           <Link href="/contact" className="text-white">Contact</Link>
-//           <Link href="/disclaimer" className="text-white">Disclaimer</Link>
-//           <Link href="/terms" className="text-white">Terms of Service</Link>
-//         </div>
-//       </div>
-//     </nav>
-//   );
-// };
-
-// export default Navbar;
-
-
-
-
 "use client";
 import { useState } from "react";
 import Link from "next/link"; // Use Next.js Link for navigation
@@ -49,13 +10,14 @@ const Navbar: React.FC = () => {
     setIsOpen(!isOpen); // Toggle navbar visibility on mobile
   };
 
+
   return (
     <nav className="bg-black text-white p-4 shadow-md">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         {/* Logo or Title */}
-        <h1 className="text-white text-3xl font-bold">
+        <h2 className="text-white text-3xl font-bold">
           Vercast Video
-        </h1>
+        </h2>
 
         {/* Right-side Links for Desktop */}
         <div className="hidden md:flex items-center gap-8">
