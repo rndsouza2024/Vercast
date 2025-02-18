@@ -109,19 +109,19 @@ import type React from "react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Vercast Video - Share and Watch Videos",
+  title: "Vercast Video™ - Share and Watch Videos",
   description: "Upload, share and watch videos online. High quality video hosting platform.",
   keywords: "video upload, video sharing, watch videos, streaming platform",
   openGraph: {
-    title: "Vercast Video - Share and Watch Videos",
+    title: "Vercast Video™ - Share and Watch Videos",
     description: "Upload, share and watch videos online. High quality video hosting platform.",
     type: "website",
     url: process.env.NEXT_PUBLIC_API_URL,
-    siteName: "Vercast Video",
+    siteName: "Vercast Video™",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vercast Video - Share and Watch Videos",
+    title: "Vercast Video™ - Share and Watch Videos",
     description: "Upload, share and watch videos online. High quality video hosting platform.",
   },
   robots: {
@@ -172,6 +172,19 @@ export default function RootLayout({
         <meta property='og:image:width' content='1280' />
         <meta property='og:image:height' content='720' />
         <meta property='og:image:type' content='image/jpg' />
+        <meta name='twitter:card' content='summary_large_image' />
+        <meta
+          name='twitter:title'
+          content='Vercast Video™ - Share and Watch Videos'
+        />
+        <meta
+          name='twitter:description'
+          content='Upload, share and watch videos online. High quality video hosting platform.'
+        />
+        <meta
+          name='twitter:image'
+          content='https://vercast.vercel.app/og_image.jpg'
+        />
       </head>
       <body className={inter.className}>
         <Navbar /> {/* Place the Navbar here */}
