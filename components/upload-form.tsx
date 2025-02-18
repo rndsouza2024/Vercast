@@ -1055,7 +1055,7 @@ export function UploadForm() {
       if (!authData.cookie) throw new Error("No authentication cookie received");
 
       // 2. Upload to Hydrax
-      setStatus("Uploading video...Wait patiently...");
+      setStatus("Uploading video & being processed...Wait Patiently...");
       const hydraxForm = new FormData();
       hydraxForm.append("file", file, file.name);
 
