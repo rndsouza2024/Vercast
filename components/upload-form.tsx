@@ -1156,7 +1156,7 @@ export function UploadForm() {
         </div>
 
         <div>
-          <Label htmlFor="thumbnail">Thumbnail (Optional)</Label>
+          <Label htmlFor="thumbnail">Thumbnail</Label>
           <Input 
             type="file" 
             id="thumbnail" 
@@ -1194,6 +1194,7 @@ export function UploadForm() {
         <DialogContent>
           <DialogTitle>Upload Successful</DialogTitle>
           <p>Your video has been uploaded and is being processed.</p>
+          <p>Please refresh the page after some time to check its status.</p>
           <Button onClick={() => setShowMessage(false)} className="mt-4 w-full">
             OK
           </Button>
