@@ -2950,7 +2950,7 @@ export default function WatchPage({ params }: { params: { slug: string } }) {
   const [showPopupAd, setShowPopupAd] = useState(false); // State for popup ad visibility
 
   // Directly set the ad video URLs
-  const adVideoUrl = "https://res.cloudinary.com/dm37icb6j/video/upload/v1739803773/AD1_jr0ngh.mp4"; 
+  const adVideoUrl = "https://res.cloudinary.com/dm37icb6j/video/upload/v1739845637/main_zmp0bz.mp4"; 
   const popupAdUrl = "https://res.cloudinary.com/dm37icb6j/video/upload/v1739803773/AD1_jr0ngh.mp4"; 
 
   useEffect(() => {
@@ -3065,7 +3065,7 @@ export default function WatchPage({ params }: { params: { slug: string } }) {
         <div className="relative w-full aspect-video mb-4">
           <div className="absolute inset-0 flex justify-center items-center bg-black bg-opacity-70 z-50">
             <div className="relative w-full h-full">
-              <a href="https://amazonaffiliatestore.vercel.app/" target="_blank" rel="noopener noreferrer">
+              {/* <a href="https://amazonaffiliatestore.vercel.app/" target="_blank" rel="noopener noreferrer"> */}
                 <video
                   autoPlay
                   muted
@@ -3081,7 +3081,7 @@ export default function WatchPage({ params }: { params: { slug: string } }) {
                 >
                   <source src={adVideoUrl} type="video/mp4" />
                 </video>
-              </a>
+              {/* </a> */}
               <div className="absolute bottom-4 left-4 text-white">
                 <p className="text-lg">Skip the ad in {countdown} sec.</p>
                 {skipButtonVisible && (
