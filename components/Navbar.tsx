@@ -54,7 +54,7 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         {/* Logo or Title */}
         <h1 className="text-white text-3xl font-bold">
-          Vercast
+          Vercast Video
         </h1>
 
         {/* Right-side Links for Desktop */}
