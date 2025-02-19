@@ -305,7 +305,8 @@
 
 
 
-
+// Client component (separate file)
+"use client";
 // app/watch/[slug]/page.tsx
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -436,8 +437,7 @@ export default async function WatchPage({ params }: { params: { slug: string } }
   );
 }
 
-// Client component (separate file)
-"use client";
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
